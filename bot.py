@@ -1,12 +1,16 @@
+import asyncio
 import logging
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # =====================
 # CONFIG
 # =====================
 BOT_TOKEN = "7571428035:AAGZZpcS_z_xCgmf-9nB02m-EgnuyMGVxuI"
-ADMIN_IDS = [7115743590]  # admin telegram ID lar (raqam)
+ADMIN_IDS = {7115743590}  # admin telegram ID lar (raqam)
 
 # =====================
 # LOGGING
@@ -16,58 +20,60 @@ logging.basicConfig(level=logging.INFO)
 # =====================
 # BOT INIT
 # =====================
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+dp = Dispatcher()
 
 # =====================
 # KEYBOARDS
 # =====================
 def main_menu(user_id: int):
-    kb = InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        InlineKeyboardButton("🎭 Pranklar", callback_data="pranks"),
-        InlineKeyboardButton("ℹ️ Maʼlumot", callback_data="info"),
-    )
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎭 Pranklar", callback_data="pranks")
+    kb.button(text="ℹ️ Maʼlumot", callback_data="info")
     if user_id in ADMIN_IDS:
-        kb.add(InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin"))
-    return kb
+        kb.button(text="⚙️ Admin Panel", callback_data="admin")
+    kb.adjust(2)
+    return kb.as_markup()
+
+def back_button():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back")
+    return kb.as_markup()
 
 def admin_menu():
-    kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        InlineKeyboardButton("📊 Bot holati", callback_data="status"),
-        InlineKeyboardButton("⬅️ Orqaga", callback_data="back"),
-    )
-    return kb
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📊 Bot holati", callback_data="status")
+    kb.button(text="⬅️ Orqaga", callback_data="back")
+    kb.adjust(1)
+    return kb.as_markup()
 
 # =====================
 # HANDLERS
 # =====================
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
+@dp.message(CommandStart())
+async def start_handler(message: Message):
     text = (
         "👾 <b>CyberPrankUz</b>\n\n"
-        "Bu bot ko‘ngilochar prank platforma.\n"
+        "Ko‘ngilochar prank platforma.\n"
         "Hozircha test rejimida ishlayapti.\n\n"
         "Pastdagi menyudan tanlang 👇"
     )
-    await message.answer(text, reply_markup=main_menu(message.from_user.id), parse_mode="HTML")
+    await message.answer(text, reply_markup=main_menu(message.from_user.id))
 
-@dp.callback_query_handler(lambda c: c.data == "pranks")
-async def pranks_handler(call: types.CallbackQuery):
+
+@dp.callback_query(F.data == "pranks")
+async def pranks_handler(call: CallbackQuery):
     await call.answer()
     await call.message.edit_text(
         "🎭 <b>Pranklar</b>\n\n"
         "Hozircha pranklar yo‘q.\n"
         "Tez orada qo‘shiladi 👨‍💻",
-        reply_markup=InlineKeyboardMarkup().add(
-            InlineKeyboardButton("⬅️ Orqaga", callback_data="back")
-        ),
-        parse_mode="HTML"
+        reply_markup=back_button()
     )
 
-@dp.callback_query_handler(lambda c: c.data == "info")
-async def info_handler(call: types.CallbackQuery):
+
+@dp.callback_query(F.data == "info")
+async def info_handler(call: CallbackQuery):
     await call.answer()
     await call.message.edit_text(
         "ℹ️ <b>CyberPrankUz haqida</b>\n\n"
@@ -75,49 +81,49 @@ async def info_handler(call: types.CallbackQuery):
         "• Video / audio / effektlar (keyin)\n"
         "• Test rejimi\n\n"
         "Muammo yoki takliflar bo‘lsa admin bilan bog‘laning.",
-        reply_markup=InlineKeyboardMarkup().add(
-            InlineKeyboardButton("⬅️ Orqaga", callback_data="back")
-        ),
-        parse_mode="HTML"
+        reply_markup=back_button()
     )
 
-@dp.callback_query_handler(lambda c: c.data == "admin")
-async def admin_handler(call: types.CallbackQuery):
+
+@dp.callback_query(F.data == "admin")
+async def admin_handler(call: CallbackQuery):
     if call.from_user.id not in ADMIN_IDS:
         await call.answer("Ruxsat yo‘q", show_alert=True)
         return
     await call.answer()
     await call.message.edit_text(
         "⚙️ <b>Admin Panel</b>",
-        reply_markup=admin_menu(),
-        parse_mode="HTML"
+        reply_markup=admin_menu()
     )
 
-@dp.callback_query_handler(lambda c: c.data == "status")
-async def status_handler(call: types.CallbackQuery):
+
+@dp.callback_query(F.data == "status")
+async def status_handler(call: CallbackQuery):
     await call.answer()
     await call.message.edit_text(
         "📊 <b>Bot holati</b>\n\n"
         "✅ Bot ishlayapti\n"
         "🧪 Rejim: Test\n"
         "🎭 Pranklar: 0",
-        reply_markup=admin_menu(),
-        parse_mode="HTML"
+        reply_markup=admin_menu()
     )
 
-@dp.callback_query_handler(lambda c: c.data == "back")
-async def back_handler(call: types.CallbackQuery):
+
+@dp.callback_query(F.data == "back")
+async def back_handler(call: CallbackQuery):
     await call.answer()
     await call.message.edit_text(
         "👾 <b>CyberPrankUz</b>\n\n"
         "Pastdagi menyudan tanlang 👇",
-        reply_markup=main_menu(call.from_user.id),
-        parse_mode="HTML"
+        reply_markup=main_menu(call.from_user.id)
     )
 
 # =====================
 # START
 # =====================
+async def main():
+    print("🚀 CyberPrankUz (aiogram 3) ishga tushdi...")
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
-    print("🚀 CyberPrankUz bot ishga tushdi...")
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(main())
